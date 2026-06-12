@@ -78,73 +78,54 @@ app.get('*', (req, res) => {
 });
 
 
-// Connect to MongoDB and start server
+// Detect Vercel serverless environment
+const isVercel = !!process.env.VERCEL;
+
+// Connect to MongoDB and start server (non-Vercel)
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/hr-recruitment';
 
 const connectDB = async () => {
   let connectionUri = MONGO_URI;
   let mongoServer = null;
-
-  // Automatically check if MONGO_URI points to Atlas or another external DB
   const isAtlasOrExternal = MONGO_URI && (
     MONGO_URI.startsWith('mongodb+srv://') ||
     (!MONGO_URI.includes('127.0.0.1') && !MONGO_URI.includes('localhost'))
   );
-
-  // Only use in-memory database if explicitly configured AND not using an external/Atlas URI
-  const useInMemory = process.env.USE_IN_MEMORY_DB === 'true' && !isAtlasOrExternal;
+  const useInMemory = process.env.USE_IN_MEMORY_DB === 'true' && !isAtlasOrExternal && !isVercel;
 
   if (useInMemory) {
-    console.log('⏳ Starting in-memory MongoDB server...');
+    console.log('Starting in-memory MongoDB server...');
     const { MongoMemoryServer } = require('mongodb-memory-server');
     mongoServer = await MongoMemoryServer.create();
     connectionUri = mongoServer.getUri();
-    console.log('✨ In-memory MongoDB server started');
+    console.log('In-memory MongoDB server started');
   }
 
   try {
     await mongoose.connect(connectionUri);
-    console.log(`✅ Connected to MongoDB (${useInMemory ? 'In-Memory' : 'External'})`);
-
+    console.log(`Connected to MongoDB (${useInMemory ? 'In-Memory' : 'External'})`);
     if (useInMemory) {
-      console.log('🌱 Seeding in-memory database with initial data...');
-      const seedData = require('./seed');
-      await seedData(false);
-      console.log('✅ In-memory database seeded successfully');
+      console.log('Seeding in-memory database...');
+      await require('./seed')(false);
     }
-
-    const server = app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-    });
-
-    // Handle graceful shutdown
+    const server = app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
     const shutdown = async () => {
-      console.log('Stopping server...');
       server.close(async () => {
         await mongoose.disconnect();
-        if (mongoServer) {
-          await mongoServer.stop();
-        }
-        console.log('Server stopped');
+        if (mongoServer) await mongoServer.stop();
         process.exit(0);
       });
     };
-
     process.on('SIGTERM', shutdown);
     process.on('SIGINT', shutdown);
-
   } catch (err) {
-    console.error('❌ MongoDB connection error:', err.message);
-    if (mongoServer) {
-      await mongoServer.stop();
-    }
-    process.exit(1);
+    console.error('DB connection error:', err.message);
+    if (!isVercel) process.exit(1);
   }
 };
 
-connectDB();
+if (!isVercel) connectDB();
 
-// Export for Vercel serverless
 module.exports = app;
 

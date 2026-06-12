@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: hr-recruitment-ai
+    env: node
+    buildCommand: cd client && npm install && npm run build
+    startCommand: cd server && npm install && node index.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: USE_IN_MEMORY_DB
+        value: "true"
+      - key: MONGO_URI
+        value: mongodb://127.0.0.1:27017/hr-recruitment
+      - key: JWT_SECRET
+        value: hr-agent-super-secret-jwt-key-2024
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: NODE_VERSION
+        value: 20
