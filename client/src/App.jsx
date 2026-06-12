@@ -39,16 +39,18 @@ function AuthProvider({ children }) {
     const savedToken = localStorage.getItem('hr_token');
     const savedUser = localStorage.getItem('hr_user');
     if (savedToken && savedUser) {
-      try {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
+      axios.get('/api/auth/me').then(res => {
         setToken(savedToken);
         setUser(JSON.parse(savedUser));
-        axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
-      } catch {
+      }).catch(() => {
         localStorage.removeItem('hr_token');
         localStorage.removeItem('hr_user');
-      }
+        delete axios.defaults.headers.common['Authorization'];
+      }).finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   const login = useCallback(async (email, password) => {

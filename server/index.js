@@ -1,8 +1,8 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path');
 
 
 const authRoutes = require('./routes/auth');
@@ -77,6 +77,10 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
+
+// Sensible defaults when .env is not present
+if (!process.env.JWT_SECRET) process.env.JWT_SECRET = 'hr-agent-default-secret-change-in-production';
+if (process.env.USE_IN_MEMORY_DB !== 'false') process.env.USE_IN_MEMORY_DB = 'true';
 
 // Detect Vercel serverless environment
 const isVercel = !!process.env.VERCEL;
